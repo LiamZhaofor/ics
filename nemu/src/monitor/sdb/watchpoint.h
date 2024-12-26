@@ -1,4 +1,4 @@
-#define NR_WP 32;
+#define NR_WP 32
 
 typedef struct Watchpoint {
   int NO;

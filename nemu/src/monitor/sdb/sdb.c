@@ -19,12 +19,11 @@
 #include <readline/history.h>
 #include <memory/paddr.h>
 #include "sdb.h"
-// #include "watchpoint.c"
+#include "watchpoint.h"
 
 static int is_batch_mode = false;
 
 void init_regex();
-void init_wp_pool();
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
 static char* rl_gets() {
@@ -75,12 +74,21 @@ static int cmd_info(char *args);
 static int cmd_x(char *args);
 
 static int cmd_w(char *args){
-    //char *arg = strtok(NULL," ");
-    //WP *wp = new_wp(arg);
-    //#ifdef CONFIG_WATCHPOINT
-    //printf("Set watchpoint %d: %s\n",wp->NO,wp->expr);
-    //#else printf("No watchpoint available\n");
-    //#endif
+    char *arg = strtok(NULL," ");
+    init_wp_pool();
+    if(arg == NULL){
+        printf("Please input the expression\n");
+        return 0;
+    } else {
+    WP *wp = new_wp(arg);
+    }
+    #ifdef CONFIG_WATCHPOINT
+    
+      
+      printf("Set watchpoint %d: %s\n",wp->NO,wp->expr);
+    #else 
+      printf("No watchpoint available\n");
+    #endif
     
     return 0;
 }

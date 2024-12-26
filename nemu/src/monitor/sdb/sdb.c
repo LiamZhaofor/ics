@@ -17,7 +17,9 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <memory/paddr.h>
 #include "sdb.h"
+// #include "watchpoint.c"
 
 static int is_batch_mode = false;
 
@@ -49,10 +51,39 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+    exit(0);
   return -1;
 }
 
+static int cmd_p(char *args){
+    bool success;
+    word_t x = expr(args,&success);
+    if(success){
+      puts("invalid expression");
+    }else{
+    printf("%u\n",x);
+    }
+    return 0;
+}
+
 static int cmd_help(char *args);
+
+static int cmd_si(char *args);
+
+static int cmd_info(char *args);
+
+static int cmd_x(char *args);
+
+static int cmd_w(char *args){
+    //char *arg = strtok(NULL," ");
+    //WP *wp = new_wp(arg);
+    //#ifdef CONFIG_WATCHPOINT
+    //printf("Set watchpoint %d: %s\n",wp->NO,wp->expr);
+    //#else printf("No watchpoint available\n");
+    //#endif
+    
+    return 0;
+}
 
 static struct {
   const char *name;
@@ -64,7 +95,11 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
 
   /* TODO: Add more commands */
-
+  {"si","Lets the program pause after executing N instructions in a single step, when N is not given, the default is 1.",cmd_si},
+  { "info","Print register status Print watchpoint information",cmd_info},
+  { "x","Find the value of the expression EXPR, use the result as the starting memory address, and output N consecutive 4-bytes in hexadecimal.",cmd_x},
+  {"p","calculate the expressio.",cmd_p},
+  {"w","set watchpoint",cmd_w}
 };
 
 #define NR_CMD ARRLEN(cmd_table)
@@ -90,6 +125,38 @@ static int cmd_help(char *args) {
     printf("Unknown command '%s'\n", arg);
   }
   return 0;
+}
+
+static int cmd_si(char *args){
+    char *arg = strtok(NULL," ");
+    int n = 1;
+    if(arg){
+    sscanf(arg,"%d",&n);
+    }
+    cpu_exec(n);
+    return 0;
+}
+
+static int cmd_info(char *args){
+    char *arg = strtok(NULL," ");
+    if(arg != NULL && strcmp(arg,"r") == 0){
+        isa_reg_display();
+    }
+    return 0;
+}
+
+static int cmd_x(char *args){
+    char *n = strtok(NULL," ");
+    char *addr = strtok(NULL," ");
+    int len = 0;
+    paddr_t addrs = 0;
+    sscanf(n,"%d",&len);
+    sscanf(addr,"%x",&addrs);
+    for(int i = 0; i < len; i++){
+        printf("%x\n",paddr_read(addrs,4));
+        addrs += 4;
+    }
+    return 0;
 }
 
 void sdb_set_batch_mode() {

@@ -73,23 +73,28 @@ static int cmd_info(char *args);
 
 static int cmd_x(char *args);
 
-static int cmd_w(char *args){
-    char *arg = strtok(NULL," ");
+static int cmd_w(char *args) {
+    char *arg = strtok(NULL, " ");
     init_wp_pool();
-    if(arg == NULL){
+
+    if (arg == NULL) {
         printf("Please input the expression\n");
         return 0;
-    } else {
-    WP *wp = new_wp(arg);
     }
+
+    WP *wp = new_wp(arg);
+    if (wp == NULL) {
+        printf("Failed to create watchpoint\n");
+        return -1;
+    }
+
     #ifdef CONFIG_WATCHPOINT
-    
-      
-      printf("Set watchpoint %d: %s\n",wp->NO,wp->expr);
+    printf("Set watchpoint %d: %s\n", wp->NO, wp->expr);
     #else 
-      printf("No watchpoint available\n");
+    printf("No watchpoint available\n");
     #endif
-    
+
+   // free_wp(wp); // 假设有一个 free_wp 函数用于释放 WP 结构体的内存
     return 0;
 }
 
@@ -149,6 +154,8 @@ static int cmd_info(char *args){
     char *arg = strtok(NULL," ");
     if(arg != NULL && strcmp(arg,"r") == 0){
         isa_reg_display();
+    } else {
+        printf("No info available\n");
     }
     return 0;
 }

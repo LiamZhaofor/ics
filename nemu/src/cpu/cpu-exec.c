@@ -17,9 +17,10 @@
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
 #include <locale.h>
-#include "monitor/sdb/watchpoint.h"
-#include "monitor/sdb/sdb.h"
+#include "/home/zjs/ics/nemu/src/monitor/sdb/watchpoint.h"
+#include "/home/zjs/ics/nemu/src/monitor/sdb/sdb.h"
 
+extern WP* head;
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
  * This is useful when you use the `si' command.
@@ -43,14 +44,32 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
 #ifdef CONFIG_WATCHPOINT
   WP* cur = head;
-  while(cur->next){
-    if(cur->val != expr(cur->expr,NULL)){
-      printf("Watchpoint %d: %s\n",cur->NO,cur->expr);
-      printf("Old value: %d\n",cur->val);
-      printf("New value: %d\n",expr(cur->expr,NULL));
-      cur->val = expr(cur->expr,NULL);
+  while (cur != NULL) {  // 使用NULL检查替代free_比较
+    // 添加数据完整性检查
+    if (cur->expr == NULL || strlen(cur->expr) == 0) {
+      printf("警告: 监视点 %d 表达式无效\n", cur->NO);
+      cur = cur->next;
+      continue;
+    }
+
+    bool success = true;
+    word_t new_val = expr(cur->expr, &success);
+    
+    if (!success) {
+      printf("错误: 监视点 %d 表达式求值失败\n", cur->NO);
+      cur = cur->next;
+      continue;
+    }
+
+    if (cur->val != new_val) {
+      printf("监视点 %d: %s\n", cur->NO, cur->expr);
+      printf("旧值: " FMT_WORD "\n", cur->val);
+      printf("新值: " FMT_WORD "\n", new_val);
+      cur->val = new_val;
       nemu_state.state = NEMU_STOP;
     }
+    
+    cur = cur->next;
   }
 #endif
 }

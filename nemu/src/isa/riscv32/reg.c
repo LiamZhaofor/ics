@@ -30,5 +30,30 @@ void isa_reg_display() {
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
+ *success = true;
+
+  // 跳过 $ 符号
+  if (s[0] == '$') {
+    s++;
+  }
+
+  // 处理数字形式的寄存器
+  if (strcmp(s, "0") == 0) {
+    return cpu.gpr[0];
+  }
+
+  // 处理通用寄存器名称
+  for (int i = 0; i < 32; i++) {
+    if (strcmp(s, regs[i]) == 0) {
+      return cpu.gpr[i];
+    }
+  }
+
+  // 处理特殊寄存器名称
+  if (strcmp(s, "pc") == 0) {
+    return cpu.pc;
+  }
+
+  *success = false;
   return 0;
 }

@@ -24,6 +24,8 @@
 
 #include <limits.h>
 
+#include <common.h>
+
 enum
 {
   TK_NOTYPE = 256,
@@ -72,7 +74,7 @@ static struct rule
     {"\\&\\&", AND},
     {"\\!", '!'},
 
-    {"\\$[a-zA-Z]*[0-9]*", RESGISTER},
+    {"^(\\$0|ra|sp|gp|tp|t[0-6]|s[0-9]|s10|s11|a[0-7])$", RESGISTER},
     {"0[xX][0-9a-fA-F]+", HEX},
     {"^[0-9]+", NUM},
 
@@ -148,11 +150,12 @@ static bool make_token(char *e)
           tokens[nr_token].type = RESGISTER;
           strncpy(tokens[nr_token].str, substr_start, substr_len);
           tokens[nr_token].str[substr_len] = '\0'; // Ensure null-termination
-          bool *success = false;
-          word_t value = isa_reg_str2val(tokens[nr_token].str, success);
-          if (*success)
+          bool success = false;
+          isa_reg_str2val(tokens[nr_token].str, &success);
+          if (!success)
           {
-            sprintf(tokens[nr_token].str, "%d", value);
+            printf("Invalid register: %s\n", tokens[nr_token].str);
+            return false;
           }
           nr_token++;
           break;
@@ -289,13 +292,16 @@ word_t findMainop(int p, int q)
       {
         priority = 20;
       }
-      else if(tokens[i].type == DEREF){
+      else if (tokens[i].type == DEREF)
+      {
         priority = 30;
       }
-      else if(tokens[i].type == AND){
+      else if (tokens[i].type == AND)
+      {
         priority = 5;
       }
-      else if(tokens[i].type == OR){
+      else if (tokens[i].type == OR)
+      {
         priority = 4;
       }
       else
@@ -334,9 +340,25 @@ word_t eval(int p, int q)
      * For now this token should be a number.
      * Return the value of the number.
      */
-    printf("this expr value is %d\n", atoi(tokens[p].str)); // for debug
-
-    return atoi(tokens[p].str);
+    switch (tokens[p].type)
+    {
+    case NUM:
+      return atoi(tokens[p].str);
+    case HEX:
+      return strtol(tokens[p].str, NULL, 16);
+    case RESGISTER:
+      // 获取寄存器值
+      bool success = false;
+      word_t val = isa_reg_str2val(tokens[p].str, &success); // 跳过$前缀
+      if (!success)
+      {
+        printf("Invalid register: %s\n", tokens[p].str);
+        assert(0);
+      }
+      return val;
+    default:
+      assert(0);
+    }
   }
   else if (check_parentheses(p, q) == true)
   {
@@ -366,10 +388,11 @@ word_t eval(int p, int q)
     case '-':
       return val1 - val2;
     case '/':
-    if(val2 == 0){
-      printf("div zero\n");
-      assert(0);
-    }
+      if (val2 == 0)
+      {
+        printf("div zero\n");
+        assert(0);
+      }
       return val1 / val2;
     case '*':
       return val1 * val2;
@@ -378,9 +401,9 @@ word_t eval(int p, int q)
     case NOTEQ:
       return val1 != val2;
     case DEREF:
-    //assert((uintptr_t)val2 != 0);
-    uintptr_t tmp = val2;
-      return *(word_t*)tmp;
+      // assert((uintptr_t)val2 != 0);
+      uintptr_t tmp = val2;
+      return *(word_t *)tmp;
     case OR:
       return val1 || val2;
     case AND:
@@ -403,13 +426,13 @@ word_t expr(char *e, bool *success)
   for (int i = 0; i < nr_token; i++)
   { // use for debug
 
-    printf("%s ", tokens[i].str);
+    printf("%s \n", tokens[i].str);
     printf("\n");
   }
 
   for (int i = 0; i < nr_token; i++)
   {
-    if (tokens[i].type == '*' && (i == 0 || tokens[i - 1].type == '+' || tokens[i - 1].type == '-' || tokens[i - 1].type == '*' || tokens[i - 1].type == '/'|| tokens[i - 1].type == '('))
+    if (tokens[i].type == '*' && (i == 0 || tokens[i - 1].type == '+' || tokens[i - 1].type == '-' || tokens[i - 1].type == '*' || tokens[i - 1].type == '/' || tokens[i - 1].type == '('))
     {
       tokens[i].type = DEREF;
     }

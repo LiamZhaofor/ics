@@ -18,7 +18,8 @@
 #include "watchpoint.h"
 
 
-
+ WP wp_pool[NR_WP] = {};
+ WP *head = NULL, *free_ = NULL;
 void init_wp_pool()
 {
   int i;
@@ -33,38 +34,46 @@ void init_wp_pool()
 }
 
 /* TODO: Implement the functionality of watchpoint */
-WP *new_wp(char *str)
-{
-  if (free_ == NULL)
-  {
-    printf("NO enough watch point to use\n");
-    assert(0);
-  }
-  WP *node = NULL;
-  if (head == NULL)
-  {
-    node = free_;
-    free_ = free_->next;
-    node->next = NULL;
-    node->expr = str;
-    node->val = expr(node->expr, NULL);
-    head = node;
-  }
-  else
-  {
-    WP *cur = head;
-    while (cur->next)
-    {
-      cur = cur->next;
+WP *new_wp(char *str) {
+    if (free_ == NULL) {
+        printf("No enough watchpoints to use.\n");
+        assert(0); // 如果没有可用观察点，终止程序
     }
-    node = free_;
+
+    // 从空闲链表中取出一个节点
+    WP *node = free_;
     free_ = free_->next;
-    cur->next = node;
+
+    // 初始化节点
+    node->expr = strdup(str); // 复制字符串，避免悬空指针
+    if (node->expr == NULL) {
+        printf("Failed to allocate memory for expression.\n");
+        assert(0);
+    }
+
+    bool success = true;
+    node->val = expr(node->expr, &success);
+    if (!success) {
+        printf("Failed to evaluate expression: %s\n", node->expr);
+        free(node->expr); // 释放内存
+        node->expr = NULL;
+        return NULL;
+    }
+
     node->next = NULL;
-    node->expr = str;
-    node->val = expr(node->expr, NULL);
-  }
-  return node;
+
+    // 将节点添加到使用中的链表
+    if (head == NULL) {
+        head = node;
+    } else {
+        WP *cur = head;
+        while (cur->next != NULL) {
+            cur = cur->next;
+        }
+        cur->next = node;
+    }
+
+    return node;
 }
 void free_wp(WP *wp)
 {
